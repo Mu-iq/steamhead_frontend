@@ -55,7 +55,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("💬 Creative Agency Chatbot")
+st.title("💬 Steamhead Agency Chatbot")
 
 # Initialize chat history in UI
 if "chat_history" not in st.session_state:
