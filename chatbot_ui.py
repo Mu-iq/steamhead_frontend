@@ -127,7 +127,7 @@ with chat_container:
             bot_placeholder = st.empty()
             
             # Stream the response
-            stream_url = "http://127.0.0.1:8000/chat_stream"
+            stream_url = "https://steamhead-getchats-cf-812938288740.us-central1.run.app"
             params = {
                 "user_message": chat["user"],
                 "session_id": st.session_state.session_id
