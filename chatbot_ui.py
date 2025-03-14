@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import uuid
+import json
 
 # Generate a session ID for the user
 if "session_id" not in st.session_state:
@@ -128,25 +129,36 @@ with chat_container:
             
             # Stream the response
             stream_url = "https://steamhead-getchats-cf-812938288740.us-central1.run.app"
-            params = {
+            
+            # Changed from params to JSON body
+            headers = {
+                "Content-Type": "application/json"
+            }
+            data = {
                 "user_message": chat["user"],
                 "session_id": st.session_state.session_id
             }
             
             try:
                 current_response = ""
-                with requests.get(stream_url, params=params, stream=True) as r:
+                # Changed from GET to POST and from params to json
+                with requests.post(stream_url, json=data, headers=headers, stream=True) as r:
                     r.raise_for_status()
-                    for chunk in r.iter_content(chunk_size=8):
-                        if chunk:
-                            try:
-                                token = chunk.decode("utf-8", errors="replace")
-                                # Replace any unusual characters with spaces
-                                # token = ''.join(c if c.isprintable() and ord(c) < 127 else ' ' for c in token)
-                                current_response += token
-                                bot_placeholder.markdown(f'<div class="bot-message">\n{current_response}\n</div>', unsafe_allow_html=True)
-                            except Exception:
-                                continue
+                    # Changed to process SSE format
+                    for line in r.iter_lines():
+                        if line:
+                            line = line.decode('utf-8')
+                            if line.startswith('data: '):
+                                try:
+                                    json_str = line[6:]  # Remove 'data: ' prefix
+                                    chunk_data = json.loads(json_str)
+                                    if 'text' in chunk_data:
+                                        current_response += chunk_data['text']
+                                        bot_placeholder.markdown(f'<div class="bot-message">\n{current_response}\n</div>', unsafe_allow_html=True)
+                                except json.JSONDecodeError:
+                                    # If not valid JSON, treat as raw text
+                                    current_response += line
+                                    bot_placeholder.markdown(f'<div class="bot-message">\n{current_response}\n</div>', unsafe_allow_html=True)
                 
                 # Store the final response
                 st.session_state.chat_history[-1]["bot"] = current_response
@@ -157,10 +169,8 @@ with chat_container:
                 st.session_state.streaming_active = False
         
         elif chat["bot"]:
-            # Clean the response of any non-printable/unexpected characters
-            
             # Display a completed bot message
-            st.markdown(f'<div class="bot-message">{chat['bot']}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="bot-message">{chat["bot"]}</div>', unsafe_allow_html=True)
     
     # Add space at the bottom to ensure content isn't hidden behind the fixed input
     st.markdown("<div class='chat-bottom-spacer'></div>", unsafe_allow_html=True)
