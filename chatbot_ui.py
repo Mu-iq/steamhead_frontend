@@ -128,7 +128,7 @@ with chat_container:
             bot_placeholder = st.empty()
             
             # Stream the response
-            stream_url = "https://steamhead-getchats-cf-812938288740.us-central1.run.app"
+            stream_url = "https://steamhead-getchat-812938288740.us-central1.run.app"
             
             # Changed from params to JSON body
             headers = {
