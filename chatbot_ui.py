@@ -129,8 +129,7 @@ with chat_container:
             
             # Stream the response
             stream_url = "https://steamhead-getchat-812938288740.us-central1.run.app"
-            
-            # Changed from params to JSON body
+
             headers = {
                 "Content-Type": "application/json"
             }
@@ -138,28 +137,16 @@ with chat_container:
                 "user_message": chat["user"],
                 "session_id": st.session_state.session_id
             }
-            
+
             try:
                 current_response = ""
-                # Changed from GET to POST and from params to json
                 with requests.post(stream_url, json=data, headers=headers, stream=True) as r:
                     r.raise_for_status()
-                    # Changed to process SSE format
-                    for line in r.iter_lines():
+                    for line in r.iter_lines(decode_unicode=True):
                         if line:
-                            line = line.decode('utf-8')
-                            if line.startswith('data: '):
-                                try:
-                                    json_str = line[6:]  # Remove 'data: ' prefix
-                                    chunk_data = json.loads(json_str)
-                                    if 'text' in chunk_data:
-                                        current_response += chunk_data['text']
-                                        bot_placeholder.markdown(f'<div class="bot-message">\n{current_response}\n</div>', unsafe_allow_html=True)
-                                except json.JSONDecodeError:
-                                    # If not valid JSON, treat as raw text
-                                    current_response += line
-                                    bot_placeholder.markdown(f'<div class="bot-message">\n{current_response}\n</div>', unsafe_allow_html=True)
-                
+                            current_response += line
+                            bot_placeholder.markdown(f'<div class="bot-message">\n{current_response}\n</div>', unsafe_allow_html=True)
+
                 # Store the final response
                 st.session_state.chat_history[-1]["bot"] = current_response
                 st.session_state.streaming_active = False
