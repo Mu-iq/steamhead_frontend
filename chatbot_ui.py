@@ -141,14 +141,14 @@ with chat_container:
             
             # Stream the response
             stream_url = "https://steamhead-getchat-812938288740.us-central1.run.app"
-            params = {
+            json_data = {
                 "user_message": chat["user"],
                 "session_id": st.session_state.session_id
             }
-
+            
             try:
                 current_response = ""
-                with requests.get(stream_url, params=params, stream=True) as r:
+                with requests.post(stream_url, json=json_data, stream=True) as r:
                     r.raise_for_status()
                     for line in r.iter_lines(decode_unicode=True):
                         if line:
@@ -160,6 +160,7 @@ with chat_container:
                             )
                             # Force Streamlit to update
                             st.empty()
+                            
                 st.session_state.chat_history[-1]["bot"] = current_response
                 st.session_state.streaming_active = False
                 
