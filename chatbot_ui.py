@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import uuid
-import json
+import re
 
 # Generate a session ID for the user
 if "session_id" not in st.session_state:
@@ -94,11 +94,22 @@ st.title("💬 Steamhead Agency Chatbot")
 # Create a container for the chat messages
 chat_container = st.container()
 
+def format_message(content):
+    """
+    Fixes markdown links and special character encoding in messages.
+    """
+    # Decode and fix special characters
+    safe_content = content.encode("utf-8", errors="replace").decode("utf-8")
+    # Fix Markdown links (remove unnecessary backslashes)
+    safe_content = re.sub(r"\\/", "/", safe_content)
+    return safe_content
+
 # Function to handle new messages - this will be called on form submission
 def handle_submit():
-    # Store the message to be processed
+    # Store the message to be processed (format it first)
     if st.session_state.user_input.strip():
-        st.session_state.message_to_process = st.session_state.user_input
+        formatted_input = format_message(st.session_state.user_input)
+        st.session_state.message_to_process = formatted_input
         st.session_state.user_input = ""  # Clear input immediately
 
 # Display chat history in the chat container
@@ -118,8 +129,9 @@ with chat_container:
         st.session_state.streaming_active = True
 
     # Display all chat messages
+    # Display all chat messages
     for i, chat in enumerate(st.session_state.chat_history):
-        # Display user message
+        # Display user message (already formatted)
         st.markdown(f'<div class="user-message">{chat["user"]}</div>', unsafe_allow_html=True)
         
         # Display bot message or stream it if it's the last one and streaming is active
@@ -129,25 +141,25 @@ with chat_container:
             
             # Stream the response
             stream_url = "https://steamhead-getchat-812938288740.us-central1.run.app"
-
-            headers = {
-                "Content-Type": "application/json"
-            }
-            data = {
+            params = {
                 "user_message": chat["user"],
                 "session_id": st.session_state.session_id
             }
 
             try:
                 current_response = ""
-                with requests.post(stream_url, json=data, headers=headers, stream=True) as r:
+                with requests.get(stream_url, params=params, stream=True) as r:
                     r.raise_for_status()
                     for line in r.iter_lines(decode_unicode=True):
                         if line:
-                            current_response += line
-                            bot_placeholder.markdown(f'<div class="bot-message">\n{current_response}\n</div>', unsafe_allow_html=True)
-
-                # Store the final response
+                            # Remove any trailing newlines and add to current response
+                            current_response += line.rstrip()
+                            bot_placeholder.markdown(
+                                f'<div class="bot-message">\n{current_response}\n</div>',
+                                unsafe_allow_html=True
+                            )
+                            # Force Streamlit to update
+                            st.empty()
                 st.session_state.chat_history[-1]["bot"] = current_response
                 st.session_state.streaming_active = False
                 
@@ -156,9 +168,8 @@ with chat_container:
                 st.session_state.streaming_active = False
         
         elif chat["bot"]:
-            # Display a completed bot message
+            # Display a completed, formatted bot message
             st.markdown(f'<div class="bot-message">{chat["bot"]}</div>', unsafe_allow_html=True)
-    
     # Add space at the bottom to ensure content isn't hidden behind the fixed input
     st.markdown("<div class='chat-bottom-spacer'></div>", unsafe_allow_html=True)
 
